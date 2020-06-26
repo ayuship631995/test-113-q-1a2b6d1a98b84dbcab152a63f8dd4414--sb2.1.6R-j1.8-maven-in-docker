@@ -1,5 +1,6 @@
 package org.codejudge.sb.controller;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -123,39 +124,33 @@ public class AppController {
 	
 	
 	@GetMapping("/api/quiz-questions/{id}")
-	public ResponseEntity<?> getQuizQuestionById(@PathVariable int id) throws JsonProcessingException{
-		
-		Quiz temp =  quizRepo.findById(id);
-		ObjectNode output = mapper.createObjectNode();
-		ObjectNode jNode = mapper.createObjectNode();
-		ArrayNode arrayNode = mapper.createObjectNode().arrayNode();
-		output.put("name", temp.getName());
-		output.put("description", temp.getDescription());
-		
-		List<Questions> allQues = quesRepo.findAll();
-		List<Questions> ans = new ArrayList<Questions>(); 
-		for(Questions q : allQues) {
-			if(q.getQuiz() == id) {
-				ans.add(q);
-				
-				//JsonNode addNode = mapper.writeValueAsString(q).;
-				//jNode.set("questions", arrayNode)
-			}
-					
-		}
-		
-		
-		
-		//
-		
-		//
-		if(temp == null) {
-			return new ResponseEntity<>(output, HttpStatus.BAD_REQUEST);  
-		}
-		
-		
-		
-		return new ResponseEntity<>(temp,HttpStatus.OK);
+	public ResponseEntity<?> getQuizQuestionById(@PathVariable int id) throws IOException{
+
+	ObjectNode output = mapper.createObjectNode();
+	ObjectNode jNode = mapper.createObjectNode();
+	Quiz temp =  quizRepo.findById(id);
+
+	if(temp == null) {
+	return new ResponseEntity<>(output, HttpStatus.BAD_REQUEST);  
+	}
+
+	ArrayNode arrayNode = mapper.createObjectNode().arrayNode();
+	output.put("name", temp.getName());
+	output.put("description", temp.getDescription());
+
+	List<Questions> allQues = quesRepo.findAll();
+	for(Questions q : allQues) {
+	if(q.getQuiz() == id) {
+
+	JsonNode addNode = mapper.valueToTree(q);
+	//JsonNode addNode2 =  mapper.readTree(mapper.writeValueAsString(q));
+	jNode.set("questions", arrayNode.add(addNode));
+	}
+
+	}
+	output.setAll(jNode);
+
+	return new ResponseEntity<>(output,HttpStatus.OK);
 	}
 	
 	
