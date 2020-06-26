@@ -1,10 +1,12 @@
 package org.codejudge.sb.controller;
 
-import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
-import org.codejudge.sb.DemoHelp;
-import org.codejudge.sb.entity.QuizQuestionsRepo;
-import org.codejudge.sb.entity.QuizRepository;
+import org.codejudge.sb.dao.QuesRepo;
+import org.codejudge.sb.dao.QuizRepo;
+import org.codejudge.sb.entity.Questions;
+import org.codejudge.sb.entity.Quiz;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -12,18 +14,17 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
-import ch.qos.logback.core.status.Status;
 import io.swagger.annotations.ApiOperation;
-import io.swagger.annotations.ApiParam;
 
 @RestController
-@RequestMapping
 public class AppController {
 
 	 @ApiOperation("This is the hello world api")
@@ -35,104 +36,129 @@ public class AppController {
 	private static final ObjectMapper mapper = new ObjectMapper();
 
 	@Autowired
-	DemoHelp demoHelp;
+	private QuizRepo quizRepo;
 	
 	@Autowired
-	QuizRepository quizRepo;
+	private QuesRepo quesRepo;
 	
-	@Autowired
-	QuizQuestionsRepo quesRepo;
+
 	
-	@GetMapping(value = "/api/quiz/{quiz_id}")
-	public ResponseEntity<?> getQuiz(@ApiParam(value = "quiz_id", required = true) @PathVariable int quiz_id)
-			throws IOException {
+	
+	@PostMapping("/api/quiz/")
+	public ResponseEntity<?> saveQuiz(@RequestBody Quiz quiz ) {
+		System.out.println(quiz);
 		ObjectNode output = mapper.createObjectNode();
-		if (quizRepo.isQuizExist(quiz_id)) {
-			output = (ObjectNode) new ObjectMapper().readTree(mapper.writeValueAsString(quizRepo.findById(quiz_id)));
-		} else {
-			return new ResponseEntity<>(output, HttpStatus.NOT_FOUND);
+		
+		if (quiz.getName() == null || quiz.getDescription() == null) {
+			output.put("status", "failure");
+			output.put("reason", "input body do not have correct data");
+			return new ResponseEntity<>(output, HttpStatus.BAD_REQUEST);  			
 		}
-
-		return new ResponseEntity<>(output, HttpStatus.OK);
-
+		
+		quizRepo.save(quiz);
+		System.out.println(quiz.getId());
+		
+		Quiz temp = quizRepo.findById(quiz.getId());
+		
+		return new ResponseEntity<>(temp, HttpStatus.CREATED);
 	}
 	
 	
-	@PostMapping(value = "/api/quiz")
-	public ResponseEntity<?> addQuiz(@RequestBody ObjectNode inputBody) {
-		ObjectNode output = mapper.createObjectNode();
-
-		System.out.println(inputBody);
-		
-		
-			if (!demoHelp.isRequiredFieldAvalable(inputBody)) {
-				output.put("status", "failure");
-				output.put("reason", "input body do not have correct data");
-				return new ResponseEntity<>(output, HttpStatus.BAD_REQUEST);
-			}
-//			Lead prd = mapper.convertValue(inputBody, Lead.class);
-//
-//			Long fetch_id = demoHelp.getId();
-//			if (!inputBody.has("id")) {
-//				prd.setId(fetch_id);
-//			}
-//			if (prd.getStatus() == null) {
-//				Enum<?> status = Enum.valueOf(Status.class, "Created");
-//				prd.setStatus((Status) status);
-//			}
-//			if (prd.getCommunication() == null) {
-//				prd.setCommunication("");
-//			}
-//			repository.insert(prd);
-//
-//			if (repository.isLeadExist(fetch_id)) {
-//				output = (ObjectNode) new ObjectMapper()
-//						.readTree(mapper.writeValueAsString(repository.findById(fetch_id)));
-//			} else {
-//				return new ResponseEntity<>(output, HttpStatus.NOT_FOUND);
-//			}
-
-			return new ResponseEntity<>(output, HttpStatus.CREATED);
-//		} catch (Exception ex) {
-//			output.put("Error", ex.getMessage());
-//			return new ResponseEntity<>(output, HttpStatus.BAD_REQUEST);
-//		}
+	@GetMapping("/getQuiz")
+	public List<Quiz> getAllQuiz(){
+		return quizRepo.findAll();
 	}
 	
-	
-	@GetMapping(value = "/api/questions/{question_id}")
-	public ResponseEntity<?> getQuizQues(@ApiParam(value = "question_id", required = true) @PathVariable int question_id)
-			throws IOException {
+	@GetMapping("/api/quiz/{id}")
+	public ResponseEntity<?> getQuizById(@PathVariable int id){
+		Quiz temp =  quizRepo.findById(id);
 		ObjectNode output = mapper.createObjectNode();
-		if (quesRepo.isQuizQuesExist(question_id)) {
-			output = (ObjectNode) new ObjectMapper().readTree(mapper.writeValueAsString(quizRepo.findById(question_id)));
-		} else {
-			return new ResponseEntity<>(output, HttpStatus.NOT_FOUND);
+		if(temp == null) {
+			return new ResponseEntity<>(output, HttpStatus.NOT_FOUND);  
 		}
-
-		return new ResponseEntity<>(output, HttpStatus.OK);
-
-	}
-	
-	
-	@PostMapping(value = "/api/questions")
-	public ResponseEntity<?> addQuizQues(@RequestBody ObjectNode inputBody) {
-		ObjectNode output = mapper.createObjectNode();
-
-		System.out.println(inputBody);
 		
-		
-			if (!demoHelp.isQuestionFieldAvalable(inputBody)) {
-				output.put("status", "failure");
-				output.put("reason", "input body do not have correct data");
-				return new ResponseEntity<>(output, HttpStatus.BAD_REQUEST);
-			}
-	
-			return new ResponseEntity<>(output, HttpStatus.CREATED);
+		return new ResponseEntity<>(temp,HttpStatus.OK);
 			
-	
-	
-	}	
+	}
 
+	@PostMapping("/api/questions/")
+	public ResponseEntity<?> saveQues(@RequestBody Questions ques ) {
+		System.out.println(ques);
+		ObjectNode output = mapper.createObjectNode();
+		
+		
+		
+		if (ques.getName() == null || ques.getOptions() == null || ques.getCorrect_option() == null
+				|| ques.getQuiz() == null || ques.getPoints() == null || !quizRepo.existsById(ques.getQuiz())) {
+			output.put("status", "failure");
+			output.put("reason", "input body do not have correct data");
+			return new ResponseEntity<>(output, HttpStatus.BAD_REQUEST);  			
+		}
+		
+		quesRepo.save(ques);
+		
+		Questions temp = quesRepo.findById(ques.getId());
+		
+		return new ResponseEntity<>(temp, HttpStatus.CREATED);
+	}
+	
+	
+	@GetMapping("/getQues")
+	public List<Questions> getAllQues(){
+		return quesRepo.findAll();
+	}
+	
+	@GetMapping("/api/questions/{id}")
+	public ResponseEntity<?> getQuestionById(@PathVariable int id){
+		
+		Questions temp =  quesRepo.findById(id);
+		ObjectNode output = mapper.createObjectNode();
+		if(temp == null) {
+			return new ResponseEntity<>(output, HttpStatus.NOT_FOUND);  
+		}
+		
+		return new ResponseEntity<>(temp,HttpStatus.OK);
+	}
+	
+	
+	
+	@GetMapping("/api/quiz-questions/{id}")
+	public ResponseEntity<?> getQuizQuestionById(@PathVariable int id) throws JsonProcessingException{
+		
+		Quiz temp =  quizRepo.findById(id);
+		ObjectNode output = mapper.createObjectNode();
+		ObjectNode jNode = mapper.createObjectNode();
+		ArrayNode arrayNode = mapper.createObjectNode().arrayNode();
+		output.put("name", temp.getName());
+		output.put("description", temp.getDescription());
+		
+		List<Questions> allQues = quesRepo.findAll();
+		List<Questions> ans = new ArrayList<Questions>(); 
+		for(Questions q : allQues) {
+			if(q.getQuiz() == id) {
+				ans.add(q);
+				
+				//JsonNode addNode = mapper.writeValueAsString(q).;
+				//jNode.set("questions", arrayNode)
+			}
+					
+		}
+		
+		
+		
+		//
+		
+		//
+		if(temp == null) {
+			return new ResponseEntity<>(output, HttpStatus.BAD_REQUEST);  
+		}
+		
+		
+		
+		return new ResponseEntity<>(temp,HttpStatus.OK);
+	}
+	
+	
+	
 
 }
